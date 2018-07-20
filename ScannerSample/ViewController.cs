@@ -10,53 +10,6 @@ using MobileCoreServices;
 namespace ScannerSample {
 	public partial class ViewController : NSViewController, IICDeviceBrowserDelegate, IICScannerDeviceDelegate {
 
-		// Workarounds
-		static NSString _ICStatusNotificationKey;
-		static NSString ICStatusNotificationKey {
-			get {
-				if (_ICStatusNotificationKey == null) {
-					var libHandle = Dlfcn.dlopen (Constants.ImageCaptureCoreLibrary, 0);
-					_ICStatusNotificationKey = Dlfcn.GetStringConstant (libHandle, "ICStatusNotificationKey");
-				}
-				return _ICStatusNotificationKey;
-			}
-		}
-
-		static NSString _ICScannerStatusWarmingUp;
-		static NSString ICScannerStatusWarmingUp {
-			get {
-				if (_ICScannerStatusWarmingUp == null) {
-					var libHandle = Dlfcn.dlopen (Constants.ImageCaptureCoreLibrary, 0);
-					_ICScannerStatusWarmingUp = Dlfcn.GetStringConstant (libHandle, "ICScannerStatusWarmingUp");
-				}
-				return _ICScannerStatusWarmingUp;
-			}
-		}
-
-		static NSString _ICScannerStatusWarmUpDone;
-		static NSString ICScannerStatusWarmUpDone {
-			get {
-				if (_ICScannerStatusWarmUpDone == null) {
-					var libHandle = Dlfcn.dlopen (Constants.ImageCaptureCoreLibrary, 0);
-					_ICScannerStatusWarmUpDone = Dlfcn.GetStringConstant (libHandle, "ICScannerStatusWarmUpDone");
-				}
-				return _ICScannerStatusWarmUpDone;
-			}
-		}
-
-		static NSString _ICLocalizedStatusNotificationKey;
-		static NSString ICLocalizedStatusNotificationKey {
-			get {
-				if (_ICLocalizedStatusNotificationKey == null) {
-					var libHandle = Dlfcn.dlopen (Constants.ImageCaptureCoreLibrary, 0);
-					_ICLocalizedStatusNotificationKey = Dlfcn.GetStringConstant (libHandle, "ICLocalizedStatusNotificationKey");
-				}
-				return _ICLocalizedStatusNotificationKey;
-			}
-		}
-
-		// End of workaroounds
-
 		public NSMutableArray Scanners { [Export ("Scanners")] get; [Export ("setScanners:")] set; } = new NSMutableArray ();
 		public ICDeviceBrowser DeviceBrowser { get; set; } = new ICDeviceBrowser ();
 		public ICScannerDevice SelectedScanner {
@@ -90,7 +43,7 @@ namespace ScannerSample {
 			ScannersController.SelectsInsertedObjects = false;
 
 			DeviceBrowser.Delegate = this;
-			DeviceBrowser.BrowsedDeviceTypeMask = ICDeviceTypeMask.Scanner | (ICDeviceTypeMask) ICDeviceLocationType.Local | (ICDeviceTypeMask) 0x0000FE00; // 0x0000FE00 Remote
+			DeviceBrowser.BrowsedDeviceTypeMask = ICBrowsedDeviceType.Scanner | ICBrowsedDeviceType.Local | ICBrowsedDeviceType.Remote;
 			DeviceBrowser.Start ();
 
 			FunctionalUnitMenu.RemoveAllItems ();
@@ -213,12 +166,13 @@ namespace ScannerSample {
 		{
 			Console.WriteLine ($"{nameof (DidReceiveStatusInformation)}: {device} Status: {status}");
 
-			if ((status[ICStatusNotificationKey] as NSString) == ICScannerStatusWarmingUp) {
+			var state = status[ICStatusNotificationKeys.NotificationKey] as NSString;
+			if (state == ICScannerStatus.WarmingUp) {
 				ProgressIndicator.IsDisplayedWhenStopped = true;
 				ProgressIndicator.Indeterminate = true;
 				ProgressIndicator.StartAnimation (null);
-				StatusText.StringValue = status[ICLocalizedStatusNotificationKey] as NSString;
-			} else if ((status [ICStatusNotificationKey] as NSString) == ICScannerStatusWarmUpDone) {
+				StatusText.StringValue = status[ICStatusNotificationKeys.LocalizedNotificationKey] as NSString;
+			} else if (state == ICScannerStatus.WarmUpDone) {
 				StatusText.StringValue = string.Empty;
 				ProgressIndicator.StopAnimation (null);
 				ProgressIndicator.Indeterminate = false;
